@@ -2,3 +2,5 @@
 .venv
 /Wikidata
 data.tar.bz2
+**/__pycache__/
+__pycache__/

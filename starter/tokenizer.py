@@ -34,6 +34,8 @@ def train_tokenizer(train_path=str(OUT_DIR / "train_pairs.jsonl"), vocab_size=80
     )
     return spm.SentencePieceProcessor(model_file=str(OUT_DIR / "sql_sp.model"))
 
+def load_tokenizer(path):
+    return spm.SentencePieceProcessor(model_file=path)
 
 if __name__ == "__main__":
     data = Path('data')

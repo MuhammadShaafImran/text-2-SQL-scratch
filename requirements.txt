@@ -5,3 +5,4 @@ babel
 tqdm
 tabulate
 numpy
+matplotlib
