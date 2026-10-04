@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from pathlib import Path
 
 from model.transformer import Transformer
 from starter.dataset import make_loader
@@ -16,8 +17,8 @@ NUM_LAYERS = 3
 MAX_LEN = 512
 DROPOUT = 0.1
 
-BATCH_SIZE = 32
-EPOCHS = 5
+BATCH_SIZE = 48
+ADDITIONAL_EPOCHS = 5
 
 WARMUP_STEPS = 4000
 LABEL_SMOOTHING = 0.1
@@ -28,6 +29,8 @@ BETA1 = 0.9
 BETA2 = 0.98
 
 BEST_CHECKPOINT = "best_model.pt"
+LAST_CHECKPOINT = "last_model.pt"
+RESUME_CHECKPOINT = LAST_CHECKPOINT
 
 TRAIN_PATH = "data/train_pairs.jsonl"
 DEV_PATH = "data/dev_pairs.jsonl"
@@ -104,6 +107,35 @@ def train_one_epoch(model, loader, criterion, optimizer, device, global_step):
     return average_loss, global_step, current_lr, grad_norm.item()
 
 
+def build_checkpoint(
+    epoch,
+    global_step,
+    model,
+    optimizer,
+    train_loss,
+    dev_loss,
+    learning_rate,
+):
+    return {
+        "epoch": epoch,
+        "global_step": global_step,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "train_loss": train_loss,
+        "dev_loss": dev_loss,
+        "learning_rate": learning_rate,
+        "config": {
+            "d_model": D_MODEL,
+            "heads": HEADS,
+            "d_ff": D_FF,
+            "num_layers": NUM_LAYERS,
+            "dropout": DROPOUT,
+            "warmup_steps": WARMUP_STEPS,
+            "label_smoothing": LABEL_SMOOTHING,
+        },
+    }
+
+
 def main():
     print("Device:", DEVICE)
     sp = load_tokenizer(SP_MODEL_PATH)
@@ -136,43 +168,74 @@ def main():
         betas=(BETA1, BETA2),
         eps=LEARNING_RATE_EPS
     )
-    global_step = 0
-    best_dev_loss = float("inf")
     
-    for epoch in range(1, EPOCHS + 1):
-        train_loss, global_step, current_lr, grad_norm = train_one_epoch( model, train_loader, criterion, optimizer, DEVICE, global_step)
+    checkpoint_path = Path(RESUME_CHECKPOINT)
+    if not checkpoint_path.exists() and Path(BEST_CHECKPOINT).exists():
+        checkpoint_path = Path(BEST_CHECKPOINT)
+
+    if checkpoint_path.exists():
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=DEVICE,
+            weights_only=False,
+        )
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        start_epoch = checkpoint["epoch"] + 1
+        global_step = checkpoint["global_step"]
+        best_dev_loss = checkpoint.get(
+            "best_dev_loss",
+            checkpoint["dev_loss"],
+        )
+        print(
+            f"Resumed from {checkpoint_path}: "
+            f"epoch {checkpoint['epoch']}, "
+            f"global step {global_step}, "
+            f"dev loss {best_dev_loss:.4f}"
+        )
+    else:
+        start_epoch = 1
+        global_step = 0
+        best_dev_loss = float("inf")
+        print(f"No checkpoint found at {RESUME_CHECKPOINT}; starting from scratch.")
+
+    end_epoch = start_epoch + ADDITIONAL_EPOCHS - 1
+
+    for epoch in range(start_epoch, end_epoch + 1):
+        train_loss, global_step, current_lr, grad_norm = train_one_epoch(
+            model,
+            train_loader,
+            criterion,
+            optimizer,
+            DEVICE,
+            global_step,
+        )
         dev_loss = evaluate(model, dev_loader, criterion, DEVICE)
         print(
-            f"Epoch {epoch:02d}/{EPOCHS} | "
+            f"Epoch {epoch:02d}/{end_epoch} | "
             f"Train Loss: {train_loss:.4f} | "
             f"Dev Loss: {dev_loss:.4f} | "
             f"LR: {current_lr:.8f} | "
             f"Grad Norm: {grad_norm:.4f}"
         )
 
+        checkpoint = build_checkpoint(
+            epoch,
+            global_step,
+            model,
+            optimizer,
+            train_loss,
+            dev_loss,
+            current_lr,
+        )
+        checkpoint["best_dev_loss"] = min(best_dev_loss, dev_loss)
+        torch.save(checkpoint, LAST_CHECKPOINT)
+
         if dev_loss < best_dev_loss:
             best_dev_loss = dev_loss
-            checkpoint = {
-                "epoch": epoch,
-                "global_step": global_step,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "train_loss": train_loss,
-                "dev_loss": dev_loss,
-                "learning_rate": current_lr,
-                "config": {
-                    "d_model": D_MODEL,
-                    "heads": HEADS,
-                    "d_ff": D_FF,
-                    "num_layers": NUM_LAYERS,
-                    "dropout": DROPOUT,
-                    "warmup_steps": WARMUP_STEPS,
-                    "label_smoothing": LABEL_SMOOTHING,
-                }
-            }
-
             torch.save(checkpoint,BEST_CHECKPOINT)
             print(f"  Saved checkpoint: {BEST_CHECKPOINT}")
+        print(f"  Saved checkpoint: {LAST_CHECKPOINT}")
 
     print("Training complete.")
     print(
