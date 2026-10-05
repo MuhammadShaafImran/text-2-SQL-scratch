@@ -1,0 +1,43 @@
+{
+  "starter_statistics": {
+    "train": {
+      "source": {
+        "count": 56355,
+        "mean": 41.54600301659125,
+        "maximum": 221
+      },
+      "target": {
+        "count": 56355,
+        "mean": 12.768396770472895,
+        "maximum": 63
+      }
+    },
+    "dev": {
+      "source": {
+        "count": 8421,
+        "mean": 41.49186557415984,
+        "maximum": 166
+      },
+      "target": {
+        "count": 8421,
+        "mean": 12.786011162569766,
+        "maximum": 42
+      }
+    },
+    "test": {
+      "source": {
+        "count": 15878,
+        "mean": 41.67357349792165,
+        "maximum": 259
+      },
+      "target": {
+        "count": 15878,
+        "mean": 12.927257841037914,
+        "maximum": 44
+      }
+    }
+  },
+  "trainable_parameters": 7585600,
+  "checkpoint": "best_model.pt",
+  "checkpoint_epoch": 11
+}

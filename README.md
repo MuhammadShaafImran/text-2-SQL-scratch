@@ -37,6 +37,32 @@ endpoint is stored in the visitor's browser only; each browser must configure
 the current Colab/ngrok endpoint separately. A new ngrok URL must be entered
 again after the tunnel restarts.
 
+## Evaluation and analysis
+
+The evaluation script produces WikiSQL-compatible logical-form and execution
+metrics, component accuracies, and one JSONL prediction per input row. It supports
+both required decoding strategies:
+
+```powershell
+python evaluate_model.py --split data/dev_pairs.jsonl --strategy greedy
+python evaluate_model.py --split data/dev_pairs.jsonl --strategy beam --beam-size 4
+python evaluate_model.py --split data/test_pairs.jsonl --strategy beam --beam-size 4
+```
+
+Outputs are written under `results/` as `*_predictions.jsonl` and
+`*_metrics.json`. A malformed generation is represented by `{"error": "parse"}`;
+valid generations use the required `{"query": {...}}` shape.
+
+Generate the starter statistics, parameter count, positional-encoding figure,
+cross-attention heatmap, and a short analysis report with:
+
+```powershell
+python analysis.py --checkpoint best_model.pt --example 0
+```
+
+The report and figures are written to `results/`. The cross-attention plot is
+the averaged final decoder-layer attention for the selected dev example.
+
 For a direct link, open the query page with the `api` query parameter:
 
 ```text
