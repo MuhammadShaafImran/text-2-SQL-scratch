@@ -6,3 +6,5 @@ tqdm
 tabulate
 numpy
 matplotlib
+flask
+huggingface_hub

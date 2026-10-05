@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Query Studio | QueryForge</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="query-page">
+  <main class="query-shell">
+    <nav class="topbar">
+      <a class="brand" href="landing.html">
+        <span class="brand-mark">Q</span>
+        <span>QUERYFORGE</span>
+      </a>
+      <a class="back-link" href="landing.html">← BACK HOME</a>
+    </nav>
+
+    <section class="query-layout">
+      <div class="query-intro">
+        <p class="eyebrow">QUERY STUDIO / 02</p>
+        <h1>WHAT DO YOU<br><span>WANT TO KNOW?</span></h1>
+        <p>Ask a question about your table. The model will translate it into a SQL query.</p>
+        <div class="mini-tip">
+          <span class="tip-icon">i</span>
+          <span>Tip: mention the table columns in your question for sharper results.</span>
+        </div>
+      </div>
+
+      <form class="query-card" id="query-form">
+        <div class="card-label"><span>INPUT_01</span><span class="required">REQUIRED</span></div>
+        <label for="question">Your question</label>
+        <textarea id="question" rows="4" required placeholder="e.g. What position does the player from Butler CC play?"></textarea>
+
+        <div class="schema-row">
+          <div>
+            <label for="columns">Table columns</label>
+            <input id="columns" value="player, nationality, position, school/club team" aria-describedby="columns-help">
+            <small id="columns-help">Comma-separated column names</small>
+          </div>
+          <div class="table-badge">WIKISQL<br><strong>TABLE</strong></div>
+        </div>
+
+        <fieldset class="decode-controls">
+          <legend>Decoding strategy</legend>
+          <label class="choice-card selected" for="greedy">
+            <input type="radio" id="greedy" name="strategy" value="greedy" checked>
+            <span class="choice-mark"></span>
+            <span><strong>GREEDY</strong><small>Fastest path, top token each step</small></span>
+          </label>
+          <label class="choice-card" for="beam">
+            <input type="radio" id="beam" name="strategy" value="beam">
+            <span class="choice-mark"></span>
+            <span><strong>BEAM SEARCH</strong><small>Explore multiple candidate paths</small></span>
+          </label>
+          <div class="beam-setting" id="beam-setting" aria-hidden="true">
+            <label for="beam-size">Beam width <output id="beam-value">4</output></label>
+            <input type="range" id="beam-size" min="2" max="8" value="4">
+          </div>
+        </fieldset>
+
+        <button class="button button-pink submit-button" type="submit">
+          GENERATE SQL <span aria-hidden="true">→</span>
+        </button>
+        <p class="connection-note"><span class="status-dot"></span> Ready for inference</p>
+      </form>
+    </section>
+
+    <section class="response-card" id="response-card" hidden>
+      <div class="response-head">
+        <div><p class="eyebrow">OUTPUT / GENERATED QUERY</p><h2>YOUR ANSWER</h2></div>
+        <span class="result-tag" id="result-tag">DEMO OUTPUT</span>
+      </div>
+      <div class="response-meta" id="response-meta"></div>
+      <pre id="sql-output"><code></code></pre>
+      <div class="response-foot">
+        <span id="response-status">Generated locally</span>
+        <button class="copy-button" id="copy-button" type="button">COPY SQL</button>
+      </div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

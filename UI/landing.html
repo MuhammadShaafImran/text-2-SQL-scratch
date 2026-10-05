@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueryForge | Text to SQL</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="landing-page">
+  <main class="landing-shell">
+    <nav class="topbar">
+      <a class="brand" href="landing.html" aria-label="QueryForge home">
+        <span class="brand-mark">Q</span>
+        <span>QUERYFORGE</span>
+      </a>
+      <span class="status-pill"><span class="status-dot"></span> MODEL ONLINE</span>
+    </nav>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">TEXT → SQL / FROM SCRATCH</p>
+        <h1>ASK YOUR<br><span>DATA.</span></h1>
+        <p class="hero-lede">Turn plain-English questions into SQL with a transformer trained for WikiSQL-style tables.</p>
+        <a class="button button-dark slide-link" href="query.html">
+          OPEN QUERY STUDIO <span aria-hidden="true">↗</span>
+        </a>
+        <div class="hero-note">
+          <span class="scribble-arrow">↘</span>
+          <span>Greedy or beam search.<br>You're in control.</span>
+        </div>
+      </div>
+
+      <div class="hero-art" aria-label="Decorative query preview">
+        <div class="sticker sticker-yellow">NO<br>SQL<br>DRAMA</div>
+        <div class="terminal-card tilted">
+          <div class="terminal-head"><span></span><span></span><span></span><b>query_preview.sql</b></div>
+          <div class="terminal-body">
+            <span class="code-purple">SELECT</span> <span class="code-pink">position</span><br>
+            <span class="code-purple">FROM</span> <span class="code-green">players</span><br>
+            <span class="code-purple">WHERE</span> school = <span class="code-yellow">'butler cc'</span><span class="cursor"></span>
+          </div>
+        </div>
+        <div class="floating-card float-one"><strong>01</strong><br>QUESTION<br>IN</div>
+        <div class="floating-card float-two"><strong>02</strong><br>QUERY<br>OUT</div>
+      </div>
+    </section>
+
+    <section class="feature-strip">
+      <div><strong>01</strong><span>Natural language<br>inputs</span></div>
+      <div><strong>02</strong><span>Beam width<br>controls</span></div>
+      <div><strong>03</strong><span>Readable SQL<br>outputs</span></div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
