@@ -6,6 +6,46 @@ WikiData/
 data/
 - get the filtered out data from starter code
 
+## Colab + Google Drive + ngrok inference
+
+Open [inference_ngrok.ipynb](./inference_ngrok.ipynb) in Google Colab. Put only
+`best_model.pt` and `data/sql_sp.model` in a Google Drive folder. The notebook
+clones the Python source from this GitHub repository, loads the model artifacts
+from Drive, starts `POST /api/query`, and prints an ngrok URL.
+
+The deployed landing page accepts the printed endpoint URL. Paste either the
+ngrok base URL or its `/api/query` URL into the **Inference endpoint** field.
+The value is stored in the browser and passed to Query Studio automatically.
+
+## Deploy the UI to Vercel
+
+This project deploys only the frontend to Vercel. PyTorch inference remains in
+the Google Colab notebook and the temporary ngrok URL remains the backend.
+
+1. Run [inference_ngrok.ipynb](./inference_ngrok.ipynb) in Google Colab.
+2. Keep the Colab runtime running and copy its printed ngrok URL.
+3. Push this repository to GitHub, excluding model checkpoints from the
+   frontend deployment.
+4. Import the repository into Vercel. No build command is required.
+5. Open the deployed Vercel URL and paste the Colab URL into **Inference
+   endpoint**.
+6. Click **USE ENDPOINT**, then open Query Studio.
+
+The [vercel.json](./vercel.json) file maps the repository root to `UI/landing.html`
+and maps the UI assets so the existing relative links work on Vercel. The
+endpoint is stored in the visitor's browser only; each browser must configure
+the current Colab/ngrok endpoint separately. A new ngrok URL must be entered
+again after the tunnel restarts.
+
+For a direct link, open the query page with the `api` query parameter:
+
+```text
+http://localhost:5000/query.html?api=https%3A%2F%2FYOUR-NGROK-URL.ngrok-free.app%2Fapi%2Fquery
+```
+
+Alternatively, set `window.INFERENCE_API_URL` before loading `script.js`. The
+UI keeps using `/api/query` by default when no override is set.
+
 ## Hosted model endpoint
 
 The UI can be served with the Hugging Face-hosted model through `app.py`.

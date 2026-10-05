@@ -8,3 +8,4 @@ numpy
 matplotlib
 flask
 huggingface_hub
+pyngrok

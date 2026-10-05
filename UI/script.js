@@ -1,13 +1,62 @@
-const API_ENDPOINT = "/api/query";
+const configuredApi = new URLSearchParams(window.location.search).get("api");
+const storedApi = window.localStorage.getItem("inferenceApiUrl");
+const API_ENDPOINT = configuredApi || window.INFERENCE_API_URL || storedApi || "/api/query";
 
-function setupLanding() {
+function normalizeApiEndpoint(value) {
+  const url = new URL(value.trim());
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new Error("Endpoint must use http:// or https://");
+  }
+  if (!url.pathname.endsWith("/api/query")) {
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/api/query`;
+  }
+  return url.toString();
+}
+
+function setupInferenceEndpoint() {
+  const input = document.querySelector("#inference-endpoint");
+  const saveButton = document.querySelector("#save-endpoint");
+  const error = document.querySelector("#endpoint-error");
+  if (!input || !saveButton) return;
+
+  input.value = configuredApi || storedApi || "";
+  saveButton.addEventListener("click", () => {
+    try {
+      const endpoint = normalizeApiEndpoint(input.value);
+      window.localStorage.setItem("inferenceApiUrl", endpoint);
+      input.value = endpoint;
+      error.hidden = true;
+      error.textContent = "";
+    } catch (endpointError) {
+      error.hidden = false;
+      error.textContent = endpointError.message;
+    }
+  });
+
   document.querySelectorAll(".slide-link").forEach((link) => {
     link.addEventListener("click", (event) => {
-      event.preventDefault();
-      document.body.classList.add("page-exit");
-      window.setTimeout(() => {
-        window.location.href = link.href;
-      }, 220);
+      const endpoint = input.value.trim();
+      if (!endpoint) {
+        event.preventDefault();
+        error.hidden = false;
+        error.textContent = "Enter the inference endpoint before opening Query Studio.";
+        input.focus();
+        return;
+      }
+      try {
+        const normalizedEndpoint = normalizeApiEndpoint(endpoint);
+        window.localStorage.setItem("inferenceApiUrl", normalizedEndpoint);
+        link.href = `query.html?api=${encodeURIComponent(normalizedEndpoint)}`;
+        event.preventDefault();
+        document.body.classList.add("page-exit");
+        window.setTimeout(() => {
+          window.location.href = link.href;
+        }, 220);
+      } catch (endpointError) {
+        event.preventDefault();
+        error.hidden = false;
+        error.textContent = endpointError.message;
+      }
     });
   });
 }
@@ -92,5 +141,5 @@ function setupQuery() {
   });
 }
 
-if (document.querySelector(".landing-page")) setupLanding();
+if (document.querySelector(".landing-page")) setupInferenceEndpoint();
 if (document.querySelector(".query-page")) setupQuery();

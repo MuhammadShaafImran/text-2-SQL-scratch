@@ -24,6 +24,15 @@
         <a class="button button-dark slide-link" href="query.html">
           OPEN QUERY STUDIO <span aria-hidden="true">↗</span>
         </a>
+        <label for="inference-endpoint">Inference endpoint</label>
+        <div class="endpoint-row">
+          <input id="inference-endpoint" type="url"
+            placeholder="https://your-ngrok-url.ngrok-free.app/api/query"
+            aria-describedby="endpoint-help">
+          <button class="button button-pink" id="save-endpoint" type="button">USE ENDPOINT</button>
+        </div>
+        <small id="endpoint-help">Paste the URL printed by the Colab notebook.</small>
+        <p id="endpoint-error" class="endpoint-error" role="alert" hidden></p>
         <div class="hero-note">
           <span class="scribble-arrow">↘</span>
           <span>Greedy or beam search.<br>You're in control.</span>

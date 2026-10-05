@@ -1,0 +1,39 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/UI/landing.html"
+    },
+    {
+      "source": "/landing.html",
+      "destination": "/UI/landing.html"
+    },
+    {
+      "source": "/query.html",
+      "destination": "/UI/query.html"
+    },
+    {
+      "source": "/style.css",
+      "destination": "/UI/style.css"
+    },
+    {
+      "source": "/script.js",
+      "destination": "/UI/script.js"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ]
+}

@@ -33,6 +33,13 @@ h1 span { color: var(--pink); text-shadow: 4px 4px 0 var(--ink); }
 .button:hover { transform: translate(3px, 3px); box-shadow: 4px 4px 0 var(--ink); }
 .button-dark { color: var(--paper); background: var(--ink); }
 .button-pink { background: var(--pink); }
+.hero-copy > label { display: block; margin-top: 24px; font-weight: 700; }
+.endpoint-row { display: flex; max-width: 620px; gap: 10px; margin-top: 8px; }
+.endpoint-row input { min-width: 0; flex: 1; border: 2px solid var(--ink); padding: 12px; background: #fffdf8; outline: 0; }
+.endpoint-row input:focus { box-shadow: 4px 4px 0 var(--yellow); }
+.endpoint-row .button { flex: 0 0 auto; padding: 12px; font-size: 11px; }
+#endpoint-help { display: block; margin-top: 6px; color: #66616c; font: 10px "DM Mono", monospace; }
+.endpoint-error { margin: 8px 0 0; color: #cc315f; font: 11px "DM Mono", monospace; }
 .hero-note { display: flex; gap: 12px; margin: 32px 0 0 180px; font: 12px "DM Mono", monospace; transform: rotate(-4deg); }
 .scribble-arrow { color: var(--pink); font-size: 38px; }
 .hero-art { position: relative; min-height: 440px; }
