@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from model.layer import EncoderLayer, DecoderLayer
+from model.layers import EncoderLayer, DecoderLayer
 from model.helper import create_padding_mask, create_target_mask
 from starter.embeddings import InputLayer
 from starter.tokenizer import PAD_ID
@@ -9,7 +9,10 @@ class Encoder(nn.Module):
     def __init__(self, num_layers, d_model, heads, token_embedding, ffn_dim, max_len, dropout):
         super().__init__()
         self.input = InputLayer(token_embedding, d_model, max_len, dropout)
-        self.layers = nn.ModuleList([EncoderLayer(d_model, heads, ffn_dim) for _ in range(num_layers)])
+        self.layers = nn.ModuleList([
+            EncoderLayer(d_model, heads, ffn_dim, dropout)
+            for _ in range(num_layers)
+        ])
     
     def forward(self, id, source_mask=None):
         x = self.input(id)
@@ -21,7 +24,10 @@ class Decoder(nn.Module):
     def __init__(self,num_layers,d_model,heads, token_embedding, ffn_dim, max_len, dropout):
         super().__init__()
         self.input = InputLayer(token_embedding, d_model, max_len, dropout)
-        self.layers = nn.ModuleList([DecoderLayer(d_model,heads,ffn_dim) for _ in range(num_layers)])
+        self.layers = nn.ModuleList([
+            DecoderLayer(d_model, heads, ffn_dim, dropout)
+            for _ in range(num_layers)
+        ])
 
     def forward(self, tgt_ids, encoder_output, target_mask=None, source_mask=None):
         x = self.input(tgt_ids)

@@ -1,15 +1,16 @@
 import torch
+import sentencepiece as spm
 
 from model.transformer import Transformer
 from starter.embeddings import TokenEmbedding
-from starter.tokenizer import load_tokenizer, PAD_ID
+from starter.tokenizer import PAD_ID
 from decode import greedy_decode, parse_prediction, query_to_sql
 
 CHECKPOINT_PATH = "best_model.pt"
 TOKENIZER_PATH = "data/sql_sp.model"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-sp = load_tokenizer(TOKENIZER_PATH)
+sp = spm.SentencePieceProcessor(model_file=TOKENIZER_PATH)
 checkpoint = torch.load( CHECKPOINT_PATH, map_location=device, weights_only=False)
 config = checkpoint["config"]
 vocab_size = sp.get_piece_size()

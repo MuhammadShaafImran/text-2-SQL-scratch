@@ -1,15 +1,31 @@
-import json
 import re
 import torch
 
-from starter.tokenizer import (load_tokenizer, BOS_ID, EOS_ID, PAD_ID)
+from starter.tokenizer import (BOS_ID, EOS_ID)
 from starter.data_prep import (AGG_OPS,COND_OPS)
 
 MAX_DECODE_LEN = 64
 BEAM_SIZE = 4
 
+# GNMT-style length penalty exponent. Without it the raw sum of log-probs
+# always favours the shortest hypothesis, so an immediate </s> (an empty
+# target string) outranks every complete query and the parser rejects it.
+BEAM_LENGTH_PENALTY = 0.7
+
+# A completed hypothesis needs at least this many content tokens to be a
+# parseable query ("select <c0>" is already 2).
+MIN_CONTENT_TOKENS = 2
+
+
 def is_eos(token_id):
     return token_id == EOS_ID
+
+
+def beam_length_penalty(num_generated_tokens, alpha=BEAM_LENGTH_PENALTY):
+    """Normalise a cumulative log-prob by sequence length (GNMT, Eq. 14)."""
+    if num_generated_tokens <= 0:
+        return float("-inf")
+    return num_generated_tokens ** alpha
 
 def decode_ids(sp, ids):
     return sp.decode(ids)
@@ -191,9 +207,12 @@ def parse_prediction(text):
 
     if where_part:
 
-        # "and" separates conditions.
+        # "and" separates conditions -- but only when a column token and an
+        # operator follow it.  Gold values may themselves contain "and"
+        # (e.g. "= karen felix and don woodard"), and WikiSQL stores that as
+        # ONE condition, so a blind split would make it unparseable.
         condition_parts = re.split(
-            r"\s+and\s+",
+            r"\s+and\s+(?=<c\d+>\s*(?:=|>|<))",
             where_part,
         )
 
@@ -318,7 +337,11 @@ max_len=MAX_DECODE_LEN,
     """
     Beam search with beam size 4.
 
-    Returns the best token-ID sequence.
+    Hypotheses are ranked by length-normalised log-probability
+    (score / len**0.7). Raw cumulative log-prob is also carried so the
+    ranking can be reproduced.
+
+    Returns the best token-ID sequence (BOS/EOS stripped).
     """
 
     model.eval()
@@ -333,6 +356,12 @@ max_len=MAX_DECODE_LEN,
     ]
 
     completed = []
+
+    def normalised(tokens, score):
+        # Exclude BOS from the length so a single generated token counts as 1.
+        generated = max(len(tokens) - 1, 1)
+        penalty = beam_length_penalty(generated)
+        return score / penalty
 
     for _ in range(max_len):
 
@@ -386,7 +415,7 @@ max_len=MAX_DECODE_LEN,
             break
 
         candidates.sort(
-            key=lambda x: x[1],
+            key=lambda x: normalised(x[0], x[1]),
             reverse=True,
         )
 
@@ -402,7 +431,7 @@ max_len=MAX_DECODE_LEN,
 
     if completed:
         completed.sort(
-            key=lambda x: x[1],
+            key=lambda x: normalised(x[0], x[1]),
             reverse=True,
         )
 
@@ -420,5 +449,31 @@ max_len=MAX_DECODE_LEN,
         best_tokens = best_tokens[
             :best_tokens.index(EOS_ID)
         ]
+
+    # An empty or near-empty hypothesis (e.g. just "</s>") is never a valid
+    # query. Fall back to the best-scoring completed hypothesis long enough to
+    # parse, so decode output is never "".
+    if len(best_tokens) < MIN_CONTENT_TOKENS and completed:
+
+        fallback = None
+        for tokens, score in completed:
+            stripped = tokens[1:] if tokens[:1] == [BOS_ID] else list(tokens)
+            if EOS_ID in stripped:
+                stripped = stripped[: stripped.index(EOS_ID)]
+            if len(stripped) < MIN_CONTENT_TOKENS:
+                continue
+            # Rank by the same normalised score used above, keeping each
+            # candidate's own score rather than the current best's.
+            if fallback is None or normalised(tokens, score) > normalised(
+                fallback[0], fallback[1]
+            ):
+                fallback = (tokens, score)
+
+        if fallback is not None:
+            best_tokens = fallback[0]
+            if best_tokens and best_tokens[0] == BOS_ID:
+                best_tokens = best_tokens[1:]
+            if EOS_ID in best_tokens:
+                best_tokens = best_tokens[: best_tokens.index(EOS_ID)]
 
     return best_tokens

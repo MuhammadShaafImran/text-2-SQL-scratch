@@ -1,11 +1,14 @@
+import json
+import time
 import torch
 import torch.nn as nn
+import sentencepiece as spm
 from pathlib import Path
 
 from model.transformer import Transformer
 from starter.dataset import make_loader
 from starter.embeddings import TokenEmbedding
-from starter.tokenizer import load_tokenizer, PAD_ID
+from starter.tokenizer import PAD_ID
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -17,8 +20,8 @@ NUM_LAYERS = 3
 MAX_LEN = 512
 DROPOUT = 0.1
 
-BATCH_SIZE = 48
-ADDITIONAL_EPOCHS = 5
+BATCH_SIZE = 64
+EPOCHS = 20
 
 WARMUP_STEPS = 4000
 LABEL_SMOOTHING = 0.1
@@ -30,7 +33,8 @@ BETA2 = 0.98
 
 BEST_CHECKPOINT = "best_model.pt"
 LAST_CHECKPOINT = "last_model.pt"
-RESUME_CHECKPOINT = LAST_CHECKPOINT
+RESUME_CHECKPOINT = None
+TRAIN_LOG = Path("results/train_log.jsonl")
 
 TRAIN_PATH = "data/train_pairs.jsonl"
 DEV_PATH = "data/dev_pairs.jsonl"
@@ -80,6 +84,7 @@ def train_one_epoch(model, loader, criterion, optimizer, device, global_step):
     model.train()
     total_loss = 0.0
     batches = 0
+    grad_norm = 0.0
     for src, tgt in loader:
         src = src.to(device)
         tgt = tgt.to(device)
@@ -132,17 +137,28 @@ def build_checkpoint(
             "dropout": DROPOUT,
             "warmup_steps": WARMUP_STEPS,
             "label_smoothing": LABEL_SMOOTHING,
+            "batch_size": BATCH_SIZE,
+            "epochs": EPOCHS,
         },
     }
 
 
+def append_log(record):
+    """one line per epoch so loss and LR figures can be redrawn."""
+    TRAIN_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with TRAIN_LOG.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record) + "\n")
+
+
 def main():
     print("Device:", DEVICE)
-    sp = load_tokenizer(SP_MODEL_PATH)
+    if torch.cuda.is_available():
+        print("GPU:", torch.cuda.get_device_name(0))
+    sp = spm.SentencePieceProcessor(model_file=SP_MODEL_PATH)
     global VOCAB_SIZE
     VOCAB_SIZE = sp.get_piece_size()
     print("Vocabulary size:", VOCAB_SIZE)
-    
+
     train_loader = make_loader(TRAIN_PATH, sp, train=True, batch_size=BATCH_SIZE)
     dev_loader = make_loader(DEV_PATH, sp, train=False, batch_size=BATCH_SIZE)
     token_embedding = TokenEmbedding(vocab_size=VOCAB_SIZE,d_model=D_MODEL,pad_id=PAD_ID)
@@ -157,6 +173,7 @@ def main():
         vocab_size=VOCAB_SIZE
     )
     model = model.to(DEVICE)
+    print("Trainable parameters:", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
     criterion = nn.CrossEntropyLoss(
         ignore_index=PAD_ID,
@@ -168,12 +185,14 @@ def main():
         betas=(BETA1, BETA2),
         eps=LEARNING_RATE_EPS
     )
-    
-    checkpoint_path = Path(RESUME_CHECKPOINT)
-    if not checkpoint_path.exists() and Path(BEST_CHECKPOINT).exists():
-        checkpoint_path = Path(BEST_CHECKPOINT)
 
-    if checkpoint_path.exists():
+    start_epoch = 1
+    global_step = 0
+    best_dev_loss = float("inf")
+
+    checkpoint_path = Path(RESUME_CHECKPOINT) if RESUME_CHECKPOINT else None
+
+    if checkpoint_path is not None and checkpoint_path.exists():
         checkpoint = torch.load(
             checkpoint_path,
             map_location=DEVICE,
@@ -194,14 +213,14 @@ def main():
             f"dev loss {best_dev_loss:.4f}"
         )
     else:
-        start_epoch = 1
-        global_step = 0
-        best_dev_loss = float("inf")
-        print(f"No checkpoint found at {RESUME_CHECKPOINT}; starting from scratch.")
+        if TRAIN_LOG.exists():
+            TRAIN_LOG.unlink()
+        print(f"Starting from scratch for {EPOCHS} epochs (batch size {BATCH_SIZE}).")
 
-    end_epoch = start_epoch + ADDITIONAL_EPOCHS - 1
+    end_epoch = EPOCHS
 
     for epoch in range(start_epoch, end_epoch + 1):
+        started = time.time()
         train_loss, global_step, current_lr, grad_norm = train_one_epoch(
             model,
             train_loader,
@@ -211,13 +230,28 @@ def main():
             global_step,
         )
         dev_loss = evaluate(model, dev_loader, criterion, DEVICE)
+        seconds = round(time.time() - started, 2)
         print(
-            f"Epoch {epoch:02d}/{end_epoch} | "
+            f"Epoch {epoch:02d}/{EPOCHS} | "
             f"Train Loss: {train_loss:.4f} | "
             f"Dev Loss: {dev_loss:.4f} | "
             f"LR: {current_lr:.8f} | "
-            f"Grad Norm: {grad_norm:.4f}"
+            f"Grad Norm: {grad_norm:.4f} | "
+            f"{seconds}s"
         )
+
+        append_log({
+            "epoch": epoch,
+            "global_step": global_step,
+            "train_loss": train_loss,
+            "dev_loss": dev_loss,
+            "learning_rate": current_lr,
+            "grad_norm": grad_norm,
+            "seconds": seconds,
+            "is_best": dev_loss < best_dev_loss,
+            "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+            "batch_size": BATCH_SIZE,
+        })
 
         checkpoint = build_checkpoint(
             epoch,
@@ -235,13 +269,9 @@ def main():
             best_dev_loss = dev_loss
             torch.save(checkpoint,BEST_CHECKPOINT)
             print(f"  Saved checkpoint: {BEST_CHECKPOINT}")
-        print(f"  Saved checkpoint: {LAST_CHECKPOINT}")
 
     print("Training complete.")
-    print(
-        "Best dev loss:",
-        best_dev_loss
-    )
+    print("Best dev loss:", best_dev_loss)
 
 
 if __name__ == "__main__":
