@@ -1,3 +1,4 @@
+import argparse
 import json
 import time
 import torch
@@ -150,10 +151,67 @@ def append_log(record):
         handle.write(json.dumps(record) + "\n")
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Train the WikiSQL Transformer.")
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help=(
+            f"Epochs to run (default {EPOCHS}, the value in the assignment). "
+            "Raising it trains past the spec budget and should be reported as an ablation."
+        ),
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help=f"Batch size (default {BATCH_SIZE}, the value in the assignment).",
+    )
+    parser.add_argument(
+        "--run-tag",
+        default="",
+        help=(
+            "Suffix appended to best_model.pt, last_model.pt and "
+            "results/train_log.jsonl, e.g. --run-tag _60ep. Default empty keeps "
+            "the spec run's filenames, so an ablation can coexist with it."
+        ),
+    )
+    args = parser.parse_args(argv)
+    # Resolve the defaults at call time, not import time, so a caller that has
+    # already overridden the module constants (the Colab notebook does) still
+    # wins over these flags.
+    if args.epochs is None:
+        args.epochs = EPOCHS
+    if args.batch_size is None:
+        args.batch_size = BATCH_SIZE
+    return args
+
+
+def main(args=None):
+    """args: a Namespace from parse_args(), or None to use the module constants.
+
+    Passing None keeps train_module.main() callable from a notebook without
+    argparse ever reading sys.argv, which under Jupyter is ipykernel's own.
+    """
+    global EPOCHS, BATCH_SIZE, BEST_CHECKPOINT, LAST_CHECKPOINT, TRAIN_LOG
+    if args is not None:
+        EPOCHS, BATCH_SIZE = args.epochs, args.batch_size
+        # Assign unconditionally. Guarding on `if args.run_tag` would leave the
+        # previous call's paths in place, so running an ablation and then a spec
+        # run in one notebook session would write the spec run's checkpoints
+        # into the ablation's files. With an empty tag this reproduces the spec
+        # filenames exactly.
+        BEST_CHECKPOINT = f"best_model{args.run_tag}.pt"
+        LAST_CHECKPOINT = f"last_model{args.run_tag}.pt"
+        TRAIN_LOG = Path(f"results/train_log{args.run_tag}.jsonl")
+
     print("Device:", DEVICE)
     if torch.cuda.is_available():
         print("GPU:", torch.cuda.get_device_name(0))
+    print(f"Epochs: {EPOCHS}  Batch size: {BATCH_SIZE}")
+    print(f"Checkpoints: {BEST_CHECKPOINT} / {LAST_CHECKPOINT}")
+    print(f"Training log: {TRAIN_LOG}")
     sp = spm.SentencePieceProcessor(model_file=SP_MODEL_PATH)
     global VOCAB_SIZE
     VOCAB_SIZE = sp.get_piece_size()
@@ -275,4 +333,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(parse_args())

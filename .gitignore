@@ -1,7 +1,9 @@
 /data
 .venv
 /Wikidata
+/WikiSQL
 data.tar.bz2
 **/__pycache__/
 __pycache__/
 .env
+*.pt
